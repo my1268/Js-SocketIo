@@ -1,0 +1,75 @@
+app.js
+const messageUl = document.querySelector("ul");
+const nickForm = document.querySelector("#nick");
+const messageForm = document.querySelector("#message");
+const socket = new WebSocket(`ws://${window.location.host}`);
+
+const makeNickAndMessage = (type, payload) => {
+  const nickAndMessage = { type, payload };
+  return JSON.stringify(nickAndMessage); //JSON.stringify = javascript object >> string
+};
+
+socket.addEventListener("open", () => {
+  console.log("open");
+});
+socket.addEventListener("message", (message) => {
+  const li = document.createElement("li");
+  li.innerText = message.data;
+  messageUl.append(li);
+});
+socket.addEventListener("close", () => {
+  console.log("close");
+});
+const nickFormParse = (event) => {
+  event.preventDefault();
+  const formInput = nickForm.querySelector("input");
+  socket.send(makeNickAndMessage("new_nickname", formInput.value));
+  formInput.value = "";
+};
+nickForm.addEventListener("submit", nickFormParse);
+
+const messageFormParse = (event) => {
+  event.preventDefault();
+  const formInput = messageForm.querySelector("input");
+  socket.send(makeNickAndMessage("new_message", formInput.value));
+  formInput.value = "";
+};
+messageForm.addEventListener("submit", messageFormParse);
+
+
+
+
+server.js
+import express from "express";
+import http from "http";
+
+const app = express();
+
+app.set("view engine", "pug");
+app.set("views", __dirname + "/views");
+app.use("/public", express.static(__dirname + "/public"));
+app.get("/", (req, res) => res.render("home"));
+app.get("/*", (req, res) => res.redirect("/"));
+
+const handleListen = () => console.log(`Listening on http://localhost:3000`);
+
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+const sockets = [];
+wss.on("connection", (socket) => {
+  sockets.push(socket);
+  socket["new_nickname"] = "Ann";
+  socket.on("message", (message) => {
+    const parsed = JSON.parse(message); // JSON.parse = javascript object << string
+    switch (parsed.type) {
+      case "new_message":
+        sockets.forEach((aSocket) =>
+          aSocket.send(`${socket.new_nickname}: ${parsed.payload}`)
+        );
+      case "new_nickname":
+        parsed.type === "new_nickname";
+        socket["new_nickname"] = parsed.payload;
+    }
+  });
+});
